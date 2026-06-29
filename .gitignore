@@ -2,4 +2,11 @@ node_modules/
 dist/
 .DS_Store
 *.local
+
+# Environment variables — never commit real keys
 .env
+.env.local
+.env.*.local
+
+# .env.example is safe to commit (no real values)
+

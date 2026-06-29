@@ -25,8 +25,8 @@ import CartDrawer    from "./components/CartDrawer";
 
 import styles from "./App.module.css";
 
-const API_URL   = "https://dummyjson.com/products?limit=100";
-const PAGE_SIZE = 10;
+const API_URL   = `${import.meta.env.VITE_API_BASE_URL}${import.meta.env.VITE_PRODUCTS_ENDPOINT}?limit=${import.meta.env.VITE_PRODUCTS_LIMIT}`;
+const PAGE_SIZE = Number(import.meta.env.VITE_PAGE_SIZE) || 10;
 
 export default function App() {
   /* ── Data ─────────────────────────────────────────── */
@@ -34,7 +34,7 @@ export default function App() {
 
   /* ── Search ───────────────────────────────────────── */
   const [searchInput, setSearchInput] = useState("");
-  const debouncedSearch = useDebounce(searchInput, 300);
+  const debouncedSearch = useDebounce(searchInput, Number(import.meta.env.VITE_DEBOUNCE_DELAY) || 300);
 
   /* ── Filters ──────────────────────────────────────── */
   const [filters, setFilters] = useState({

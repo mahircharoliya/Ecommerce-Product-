@@ -20,7 +20,8 @@
 
 // ─── Config ────────────────────────────────────────────────────────────────
 // Replace with your real Razorpay Test Key ID from https://dashboard.razorpay.com
-export const RAZORPAY_KEY_ID = "rzp_test_YourKeyHere";
+// Set VITE_RAZORPAY_KEY_ID in your .env file
+export const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID ?? "rzp_test_YourKeyHere";
 
 // ─── Load the Razorpay JS SDK dynamically ──────────────────────────────────
 /**
