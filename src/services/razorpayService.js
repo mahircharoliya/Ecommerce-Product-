@@ -1,137 +1,178 @@
 /**
- * services/razorpayService.js
- * ----------------------------
- * All Razorpay integration logic lives here — completely decoupled
- * from UI components. Components call initiatePayment() and await
- * a result; they never touch the Razorpay SDK directly.
+ * src/services/razorpayService.js
+ * --------------------------------
+ * Frontend Razorpay service — talks to our Express backend.
  *
- * HOW RAZORPAY WORKS (frontend flow):
- *   1. Your backend creates an Order → returns { id, amount, currency }
- *   2. Frontend opens the Razorpay checkout modal with that order
- *   3. User pays → Razorpay calls handler({ razorpay_payment_id, ... })
- *   4. You verify the signature on your backend (skipped in this demo)
+ * FLOW:
+ *   1. GET  /api/payment/key          → fetch Razorpay public Key ID
+ *   2. POST /api/payment/create-order → backend creates order with secret key
+ *   3. Open Razorpay checkout modal   → user pays
+ *   4. POST /api/payment/verify       → backend verifies HMAC signature
+ *   5. Return verified result to CartDrawer
  *
- * ⚠️  DEMO MODE:
- *   Because this is a frontend-only project with no real backend,
- *   we simulate step 1 (order creation) locally and use Razorpay's
- *   TEST KEY. Replace RAZORPAY_KEY_ID with your real key and wire
- *   createOrder() to your actual backend endpoint before going live.
+ * Nothing sensitive (secret key, signature logic) is on the frontend.
  */
 
-// ─── Config ────────────────────────────────────────────────────────────────
-// Replace with your real Razorpay Test Key ID from https://dashboard.razorpay.com
-// Set VITE_RAZORPAY_KEY_ID in your .env file
-export const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID ?? "rzp_test_YourKeyHere";
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:5000";
 
-// ─── Load the Razorpay JS SDK dynamically ──────────────────────────────────
+/* ─── Load Razorpay checkout.js SDK ────────────────────────────────────── */
 /**
- * Injects the Razorpay checkout.js script once and resolves when ready.
- * Safe to call multiple times — subsequent calls resolve immediately.
+ * Injects the Razorpay <script> once; resolves immediately if already loaded.
  */
 export function loadRazorpaySDK() {
   return new Promise((resolve, reject) => {
-    // Already loaded
-    if (window.Razorpay) {
-      resolve(true);
-      return;
-    }
+    if (window.Razorpay) return resolve(true);
 
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.async = true;
-    script.onload  = () => resolve(true);
-    script.onerror = () => reject(new Error("Failed to load Razorpay SDK"));
+    const script    = document.createElement("script");
+    script.src      = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async    = true;
+    script.onload   = () => resolve(true);
+    script.onerror  = () => reject(new Error("Failed to load Razorpay SDK. Check your internet connection."));
     document.body.appendChild(script);
   });
 }
 
-// ─── Simulate order creation (replace with real API call) ──────────────────
-/**
- * In production this calls your backend:
- *   POST /api/orders  →  { id, amount, currency }
- *
- * Here we generate a fake order ID so the demo runs without a server.
- *
- * @param {number} amountINR  - Total in Indian Rupees
- * @returns {Promise<{ id: string, amount: number, currency: string }>}
- */
-async function createOrder(amountINR) {
-  // Simulated network delay (remove in production)
-  await new Promise(r => setTimeout(r, 600));
-
-  return {
-    id       : `order_demo_${Date.now()}`,   // real backend returns rzp order id
-    amount   : Math.round(amountINR * 100),  // Razorpay expects paise
-    currency : "INR",
-  };
+/* ─── Step 1: Fetch Key ID from backend ────────────────────────────────── */
+async function fetchKeyId() {
+  const res = await fetch(`${SERVER_URL}/api/payment/key`);
+  if (!res.ok) throw new Error("Could not fetch Razorpay Key from server");
+  const { keyId } = await res.json();
+  return keyId;
 }
 
-// ─── Main entry point ───────────────────────────────────────────────────────
+/* ─── Step 2: Create order on backend ──────────────────────────────────── */
 /**
- * initiatePayment
- * ---------------
- * Loads the SDK, creates an order, opens the Razorpay modal, and
- * returns a resolved/rejected promise based on the user's action.
- *
- * @param {{ amount: number, cartItems: Array, customerName?: string, customerEmail?: string }} options
- * @returns {Promise<{ razorpay_payment_id, razorpay_order_id, razorpay_signature }>}
+ * Calls POST /api/payment/create-order
+ * Returns { orderId, amount, currency, receipt }
  */
-export async function initiatePayment({ amount, cartItems, customerName = "", customerEmail = "" }) {
-  // 1. Ensure SDK is available
-  await loadRazorpaySDK();
+async function createOrder({ amount, notes = {} }) {
+  const res = await fetch(`${SERVER_URL}/api/payment/create-order`, {
+    method : "POST",
+    headers: { "Content-Type": "application/json" },
+    body   : JSON.stringify({ amount, notes }),
+  });
 
-  // 2. Create order (simulated; replace with real backend call)
-  const order = await createOrder(amount);
+  const data = await res.json();
 
-  // 3. Build Razorpay options
-  const options = {
-    key         : RAZORPAY_KEY_ID,
-    amount      : order.amount,
-    currency    : order.currency,
-    name        : "Product Explorer",
-    description : `${cartItems.length} item${cartItems.length > 1 ? "s" : ""}`,
-    order_id    : order.id,
-    image       : "", // optional logo URL
+  if (!res.ok) throw new Error(data.error || "Failed to create payment order");
+  return data;
+}
 
-    prefill: {
-      name  : customerName,
-      email : customerEmail,
-    },
-
-    notes: {
-      items: cartItems.map(i => `${i.product.title} × ${i.qty}`).join(", "),
-    },
-
-    theme: {
-      color: "#3b82f6",  // matches our UI accent
-    },
-
-    // 4. Success handler — Razorpay calls this after successful payment
-    handler(response) {
-      // `response` contains razorpay_payment_id, razorpay_order_id, razorpay_signature
-      // In production: send these to your backend for signature verification
-      return response; // promise chain catches this via the wrapper below
-    },
-  };
-
-  // 5. Wrap the modal in a Promise so callers can await it
+/* ─── Step 3: Open Razorpay modal ──────────────────────────────────────── */
+/**
+ * Returns a Promise that resolves with Razorpay's payment response
+ * or rejects if the user closes the modal or payment fails.
+ */
+function openRazorpayModal({ keyId, order, cartItems, customerName, customerEmail }) {
   return new Promise((resolve, reject) => {
-    const rzp = new window.Razorpay({
-      ...options,
-      handler(response) {
-        resolve({
-          ...response,
-          orderId: order.id,
-          amount : order.amount,
-        });
-      },
-    });
+    const options = {
+      key        : keyId,
+      amount     : order.amount,       // in paise (set by backend)
+      currency   : order.currency,
+      name       : "Product Explorer",
+      description: `${cartItems.length} item${cartItems.length > 1 ? "s" : ""}`,
+      order_id   : order.orderId,      // from backend
 
-    // Razorpay fires this when the modal is dismissed without payment
+      prefill: {
+        name : customerName  || "",
+        email: customerEmail || "",
+      },
+
+      notes: {
+        items: cartItems.map(i => `${i.product.title} × ${i.qty}`).join(", "),
+      },
+
+      theme: { color: "#3b82f6" },
+
+      // Called by Razorpay on successful payment
+      handler(response) {
+        resolve(response);
+      },
+
+      modal: {
+        // Called when user closes the modal without paying
+        ondismiss() {
+          reject(new Error("Payment cancelled by user"));
+        },
+      },
+    };
+
+    const rzp = new window.Razorpay(options);
+
     rzp.on("payment.failed", err => {
       reject(new Error(err.error?.description ?? "Payment failed"));
     });
 
     rzp.open();
   });
+}
+
+/* ─── Step 4: Verify payment signature on backend ──────────────────────── */
+/**
+ * Calls POST /api/payment/verify
+ * Backend re-creates the HMAC-SHA256 signature and compares.
+ * Returns { success, paymentId, orderId, message }
+ */
+async function verifyPayment({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) {
+  const res = await fetch(`${SERVER_URL}/api/payment/verify`, {
+    method : "POST",
+    headers: { "Content-Type": "application/json" },
+    body   : JSON.stringify({ razorpay_order_id, razorpay_payment_id, razorpay_signature }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || "Payment verification failed");
+  }
+
+  return data;
+}
+
+/* ─── Main entry point (called from CartDrawer) ─────────────────────────── */
+/**
+ * initiatePayment
+ * ---------------
+ * Orchestrates the full 4-step Razorpay payment flow.
+ *
+ * @param {{ amount, cartItems, customerName, customerEmail }} options
+ * @returns {Promise<{ success, paymentId, orderId, amount, message }>}
+ */
+export async function initiatePayment({ amount, cartItems, customerName = "", customerEmail = "" }) {
+  // Step 1 & SDK load — run in parallel for speed
+  const [, keyId] = await Promise.all([
+    loadRazorpaySDK(),
+    fetchKeyId(),
+  ]);
+
+  // Step 2 — create order on backend
+  const order = await createOrder({
+    amount,
+    notes: {
+      items: cartItems.map(i => `${i.product.title} × ${i.qty}`).join(", "),
+    },
+  });
+
+  // Step 3 — open Razorpay modal, wait for user
+  const paymentResponse = await openRazorpayModal({
+    keyId,
+    order,
+    cartItems,
+    customerName,
+    customerEmail,
+  });
+
+  // Step 4 — verify signature on backend
+  const verified = await verifyPayment({
+    razorpay_order_id  : paymentResponse.razorpay_order_id,
+    razorpay_payment_id: paymentResponse.razorpay_payment_id,
+    razorpay_signature : paymentResponse.razorpay_signature,
+  });
+
+  return {
+    ...verified,
+    amount,
+    orderId  : order.orderId,
+    paymentId: paymentResponse.razorpay_payment_id,
+  };
 }
