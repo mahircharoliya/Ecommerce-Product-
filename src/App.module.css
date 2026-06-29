@@ -34,6 +34,13 @@
   color: #7d8590;
 }
 
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
 .headerBadge {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 22px;

@@ -1,6 +1,13 @@
+/**
+ * components/SortableTable.jsx
+ * -----------------------------
+ * Renders the product rows. Now includes an "Add" column
+ * that uses AddToCartButton — wired to Zustand via that component.
+ */
+
+import AddToCartButton from "./AddToCartButton";
 import styles from "./SortableTable.module.css";
 
-/** Column definitions — sortable:true columns get clickable headers */
 const COLUMNS = [
   { key: "title",    label: "Product",  sortable: false },
   { key: "brand",    label: "Brand",    sortable: false },
@@ -8,12 +15,9 @@ const COLUMNS = [
   { key: "price",    label: "Price",    sortable: true  },
   { key: "rating",   label: "Rating",   sortable: true  },
   { key: "stock",    label: "Stock",    sortable: false },
+  { key: "action",   label: "",         sortable: false },
 ];
 
-/**
- * SortIcon
- * Shows ▲/▼ for the active column and a neutral ⇅ for inactive ones.
- */
 function SortIcon({ column, sortConfig }) {
   if (sortConfig.key !== column) {
     return <span className={styles.sortNeutral}>⇅</span>;
@@ -25,10 +29,6 @@ function SortIcon({ column, sortConfig }) {
   );
 }
 
-/**
- * RatingPill
- * Color-coded badge: green ≥ 4.5, yellow ≥ 3.5, red below.
- */
 function RatingPill({ rating }) {
   const cls =
     rating >= 4.5 ? styles.ratingGreen :
@@ -37,11 +37,6 @@ function RatingPill({ rating }) {
   return <span className={`${styles.ratingPill} ${cls}`}>★ {rating.toFixed(1)}</span>;
 }
 
-/**
- * SortableTable
- * Renders the current page of products.
- * Clicking "Price" or "Rating" headers calls onSort(key).
- */
 export default function SortableTable({ products, sortConfig, onSort }) {
   return (
     <div className={styles.wrapper}>
@@ -53,8 +48,8 @@ export default function SortableTable({ products, sortConfig, onSort }) {
                 key={col.key}
                 className={[
                   styles.th,
-                  col.sortable        ? styles.thSortable : "",
-                  sortConfig.key === col.key ? styles.thActive   : "",
+                  col.sortable ? styles.thSortable : "",
+                  sortConfig.key === col.key ? styles.thActive : "",
                 ].join(" ")}
                 onClick={col.sortable ? () => onSort(col.key) : undefined}
                 aria-sort={
@@ -86,6 +81,9 @@ export default function SortableTable({ products, sortConfig, onSort }) {
                 <RatingPill rating={p.rating} />
               </td>
               <td className={`${styles.td} ${styles.tdNum}`}>{p.stock}</td>
+              <td className={styles.td}>
+                <AddToCartButton product={p} />
+              </td>
             </tr>
           ))}
         </tbody>

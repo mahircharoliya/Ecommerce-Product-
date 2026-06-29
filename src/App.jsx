@@ -1,23 +1,38 @@
+/**
+ * App.jsx
+ * --------
+ * Root component. Wires together:
+ *   - useFetch      → raw product data
+ *   - useDebounce   → debounced search
+ *   - useMemo       → filtered + sorted + paginated derived state
+ *   - useCartStore  → Zustand cart (cart button reads it directly)
+ *   - CartDrawer    → slide-in sidebar with Razorpay checkout
+ */
+
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useFetch }    from "./hooks/useFetch";
 import { useDebounce } from "./hooks/useDebounce";
-import SearchBar   from "./components/SearchBar";
-import FilterBar   from "./components/FilterBar";
+
+import SearchBar     from "./components/SearchBar";
+import FilterBar     from "./components/FilterBar";
 import SortableTable from "./components/SortableTable";
-import Pagination  from "./components/Pagination";
+import Pagination    from "./components/Pagination";
 import LoadingSpinner from "./components/LoadingSpinner";
-import ErrorState  from "./components/ErrorState";
-import EmptyState  from "./components/EmptyState";
+import ErrorState    from "./components/ErrorState";
+import EmptyState    from "./components/EmptyState";
+import CartButton    from "./components/CartButton";
+import CartDrawer    from "./components/CartDrawer";
+
 import styles from "./App.module.css";
 
-const API_URL  = "https://dummyjson.com/products?limit=100";
+const API_URL   = "https://dummyjson.com/products?limit=100";
 const PAGE_SIZE = 10;
 
 export default function App() {
   /* ── Data ─────────────────────────────────────────── */
   const { data, loading, error, refetch } = useFetch(API_URL);
 
-  /* ── Search (raw → debounced) ─────────────────────── */
+  /* ── Search ───────────────────────────────────────── */
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebounce(searchInput, 300);
 
@@ -46,7 +61,6 @@ export default function App() {
   /* ── Pagination ───────────────────────────────────── */
   const [page, setPage] = useState(1);
 
-  // Reset to page 1 whenever the debounced search changes
   const prevSearch = useRef(debouncedSearch);
   useEffect(() => {
     if (prevSearch.current !== debouncedSearch) {
@@ -55,16 +69,17 @@ export default function App() {
     }
   }, [debouncedSearch]);
 
-  /* ── Derived data (no duplicate state) ────────────── */
+  /* ── Cart drawer ──────────────────────────────────── */
+  const [cartOpen, setCartOpen] = useState(false);
+
+  /* ── Derived data ─────────────────────────────────── */
   const products = useMemo(() => data?.products ?? [], [data]);
 
-  // Unique sorted category list from raw products
   const categories = useMemo(
     () => [...new Set(products.map(p => p.category))].sort(),
     [products]
   );
 
-  // Apply search + filters + sort — all in one useMemo pass
   const filteredSorted = useMemo(() => {
     const term     = debouncedSearch.trim().toLowerCase();
     const minPrice = filters.minPrice !== "" ? parseFloat(filters.minPrice) : null;
@@ -89,7 +104,6 @@ export default function App() {
   const pageStart   = (safePage - 1) * PAGE_SIZE;
   const currentPage = filteredSorted.slice(pageStart, pageStart + PAGE_SIZE);
 
-  /* ── Clear all ────────────────────────────────────── */
   const clearAll = useCallback(() => {
     setSearchInput("");
     setFilters({ category: "", minPrice: "", maxPrice: "" });
@@ -101,7 +115,8 @@ export default function App() {
   /* ── Render ───────────────────────────────────────── */
   return (
     <div className={styles.root}>
-      {/* Header */}
+
+      {/* ── Header ── */}
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <div>
@@ -112,15 +127,18 @@ export default function App() {
                 : "Loading catalog…"}
             </p>
           </div>
-          {!loading && !error && (
-            <div className={styles.headerBadge}>
-              {filteredSorted.length} / {products.length}
-            </div>
-          )}
+          <div className={styles.headerRight}>
+            {!loading && !error && (
+              <span className={styles.headerBadge}>
+                {filteredSorted.length} / {products.length}
+              </span>
+            )}
+            <CartButton onClick={() => setCartOpen(true)} />
+          </div>
         </div>
       </header>
 
-      {/* Sticky control bar */}
+      {/* ── Sticky control bar ── */}
       <div className={styles.controlBar}>
         <SearchBar value={searchInput} onChange={setSearchInput} />
         <FilterBar
@@ -130,7 +148,7 @@ export default function App() {
         />
       </div>
 
-      {/* Results summary */}
+      {/* ── Results summary ── */}
       {!loading && !error && (
         <div className={styles.summary}>
           <span className={styles.summaryCount}>
@@ -144,13 +162,11 @@ export default function App() {
         </div>
       )}
 
-      {/* Main content */}
+      {/* ── Main content ── */}
       <main className={styles.main}>
         {loading && <LoadingSpinner />}
 
-        {!loading && error && (
-          <ErrorState message={error} onRetry={refetch} />
-        )}
+        {!loading && error && <ErrorState message={error} onRetry={refetch} />}
 
         {!loading && !error && filteredSorted.length === 0 && (
           <EmptyState onClear={clearAll} />
@@ -178,6 +194,10 @@ export default function App() {
           </>
         )}
       </main>
+
+      {/* ── Cart Drawer (Razorpay checkout lives inside) ── */}
+      <CartDrawer isOpen={cartOpen} onClose={() => setCartOpen(false)} />
+
     </div>
   );
 }
