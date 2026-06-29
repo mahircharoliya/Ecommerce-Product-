@@ -1,0 +1,46 @@
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 6px 12px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #c9d1d9;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+  min-width: 36px;
+  text-align: center;
+}
+
+.btn:hover:not(:disabled) {
+  background: #21262d;
+  border-color: #484f58;
+  color: #e6edf3;
+}
+
+.btnActive {
+  background: #1d4ed8 !important;
+  border-color: #3b82f6 !important;
+  color: #fff !important;
+  font-weight: 600;
+}
+
+.btnDisabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.ellipsis {
+  padding: 0 4px;
+  color: #7d8590;
+  font-size: 13px;
+  user-select: none;
+}

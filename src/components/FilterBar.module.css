@@ -1,0 +1,64 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.labelText {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #7d8590;
+}
+
+.select {
+  padding: 7px 10px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #e6edf3;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  min-width: 148px;
+  transition: border-color 0.15s;
+}
+
+.select:hover {
+  border-color: #484f58;
+}
+
+.numberInput {
+  padding: 7px 10px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #e6edf3;
+  font-size: 13px;
+  font-family: inherit;
+  width: 88px;
+  transition: border-color 0.15s;
+}
+
+.numberInput::placeholder {
+  color: #484f58;
+}
+
+.numberInput:hover {
+  border-color: #484f58;
+}
+
+/* Remove number spinners */
+.numberInput::-webkit-inner-spin-button,
+.numberInput::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+.numberInput { -moz-appearance: textfield; }

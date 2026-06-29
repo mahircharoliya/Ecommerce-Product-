@@ -1,0 +1,64 @@
+/* Shared styles for LoadingSpinner, ErrorState, and EmptyState */
+
+.centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
+  gap: 12px;
+  text-align: center;
+}
+
+/* ── Spinner ─────────────────────────────────── */
+.spinner {
+  width: 38px;
+  height: 38px;
+  border: 3px solid #21262d;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ── Icon (error / empty) ────────────────────── */
+.icon {
+  font-size: 38px;
+  line-height: 1;
+}
+
+.iconError { color: #ef4444; }
+.iconEmpty { color: #3b82f6; }
+
+/* ── Text ────────────────────────────────────── */
+.title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #e6edf3;
+  margin-top: 4px;
+}
+
+.detail {
+  font-size: 13px;
+  color: #7d8590;
+  max-width: 340px;
+  line-height: 1.6;
+}
+
+/* ── Action button ───────────────────────────── */
+.actionBtn {
+  margin-top: 8px;
+  padding: 8px 22px;
+  background: #1d4ed8;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.actionBtn:hover {
+  background: #2563eb;
+}

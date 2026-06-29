@@ -1,0 +1,121 @@
+.root {
+  min-height: 100vh;
+  background: #0d1117;
+  color: #e6edf3;
+}
+
+/* ── Header ─────────────────────────────────── */
+.header {
+  padding: 36px 32px 24px;
+  border-bottom: 1px solid #21262d;
+  background: linear-gradient(180deg, #0f1923 0%, #0d1117 100%);
+}
+
+.headerInner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.heading {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: #f0f6fc;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+}
+
+.subheading {
+  font-size: 13px;
+  color: #7d8590;
+}
+
+.headerBadge {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #3b82f6;
+  white-space: nowrap;
+}
+
+/* ── Control bar (sticky) ────────────────────── */
+.controlBar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(13, 17, 23, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid #21262d;
+  padding: 12px 32px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  max-width: 100%;
+}
+
+/* ── Summary row ─────────────────────────────── */
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 32px;
+  border-bottom: 1px solid #21262d;
+  background: #0d1117;
+}
+
+.summaryCount {
+  font-size: 12px;
+  color: #7d8590;
+}
+
+.clearLink {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-family: inherit;
+}
+
+.clearLink:hover {
+  color: #60a5fa;
+}
+
+/* ── Main ────────────────────────────────────── */
+.main {
+  padding: 20px 32px 60px;
+  max-width: 1264px;
+  margin: 0 auto;
+  animation: fadeIn 0.2s ease;
+}
+
+/* ── Pagination row ──────────────────────────── */
+.paginationRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.pageInfo {
+  font-size: 12px;
+  color: #7d8590;
+}
+
+@media (max-width: 640px) {
+  .header { padding: 24px 16px 18px; }
+  .controlBar { padding: 10px 16px; }
+  .summary { padding: 8px 16px; }
+  .main { padding: 14px 16px 48px; }
+}
