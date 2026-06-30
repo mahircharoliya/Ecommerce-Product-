@@ -1,40 +1,48 @@
 /**
  * components/CartDrawer.jsx
  * --------------------------
- * Slide-in cart sidebar with:
- *   - Item list with qty controls
- *   - Customer details form (name + email) before checkout
- *   - Real Razorpay payment via backend
- *   - Success screen showing order + payment IDs
+ * Slide-in cart sidebar — fully powered by Redux.
+ *
+ * REDUX THUNK USAGE:
+ *   dispatch(processCheckout({ items, totalAmount, customerName, customerEmail }))
+ *   The thunk calls razorpayService, then dispatches fulfilled/rejected
+ *   automatically — this component only reacts to resulting state.
  */
 
 import { useState } from "react";
-import useCartStore from "../store/useCartStore";
-import { initiatePayment } from "../services/razorpayService";
+import { useSelector, useDispatch } from "react-redux";
+import {
+  selectCartItems,
+  selectCheckoutStatus,
+  selectCheckoutError,
+  selectLastOrder,
+  selectTotalItems,
+  selectTotalAmount,
+  removeFromCart,
+  updateQty,
+  clearCart,
+  resetCheckout,
+  processCheckout,  // ← Redux Thunk
+} from "../store/slices/cartSlice";
 import styles from "./CartDrawer.module.css";
 
 export default function CartDrawer({ isOpen, onClose }) {
-  // Zustand store
-  const items          = useCartStore(s => s.items);
-  const checkoutStatus = useCartStore(s => s.checkoutStatus);
-  const checkoutError  = useCartStore(s => s.checkoutError);
-  const lastOrder      = useCartStore(s => s.lastOrder);
-  const removeFromCart = useCartStore(s => s.removeFromCart);
-  const updateQty      = useCartStore(s => s.updateQty);
-  const clearCart      = useCartStore(s => s.clearCart);
-  const setStatus      = useCartStore(s => s.setCheckoutStatus);
-  const setLastOrder   = useCartStore(s => s.setLastOrder);
+  const dispatch = useDispatch();
 
-  // Local form state
+  // Redux selectors
+  const items          = useSelector(selectCartItems);
+  const checkoutStatus = useSelector(selectCheckoutStatus);
+  const checkoutError  = useSelector(selectCheckoutError);
+  const lastOrder      = useSelector(selectLastOrder);
+  const totalItems     = useSelector(selectTotalItems);
+  const totalAmount    = useSelector(selectTotalAmount);
+
+  // Local form state (UI only, no need for Redux)
   const [customerName,  setCustomerName]  = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [formError,     setFormError]     = useState("");
 
-  // Derived totals
-  const totalAmount = items.reduce((sum, i) => sum + i.product.price * i.qty, 0);
-  const totalItems  = items.reduce((sum, i) => sum + i.qty, 0);
-
-  /* ── Validate form ─────────────────────────────────────── */
+  /* ── Form validation ─────────────────────────────────────── */
   function validateForm() {
     if (!customerName.trim()) {
       setFormError("Please enter your name");
@@ -48,48 +56,27 @@ export default function CartDrawer({ isOpen, onClose }) {
     return true;
   }
 
-  /* ── Checkout handler ──────────────────────────────────── */
-  async function handleCheckout() {
-    if (items.length === 0) return;
-    if (!validateForm()) return;
+  /* ── Dispatch the checkout thunk ─────────────────────────── */
+  function handleCheckout() {
+    if (items.length === 0 || !validateForm()) return;
 
-    setStatus("processing");
-
-    try {
-      const result = await initiatePayment({
-        amount       : totalAmount,
-        cartItems    : items,
-        customerName : customerName.trim(),
-        customerEmail: customerEmail.trim(),
-      });
-
-      // Backend verified payment ✅
-      setLastOrder({
-        orderId  : result.orderId,
-        paymentId: result.paymentId,
-        amount   : totalAmount,
-        items    : [...items],
-        message  : result.message,
-      });
-      clearCart();
-      setCustomerName("");
-      setCustomerEmail("");
-      setStatus("success");
-
-    } catch (err) {
-      if (err.message === "Payment cancelled by user") {
-        setStatus("idle");
-      } else {
-        setStatus("error", err.message ?? "Payment failed. Please try again.");
+    // Redux Thunk: dispatching processCheckout returns a Promise
+    // The thunk handles pending → fulfilled/rejected internally
+    dispatch(processCheckout({
+      items,
+      totalAmount,
+      customerName : customerName.trim(),
+      customerEmail: customerEmail.trim(),
+    })).then(result => {
+      // If fulfilled, clear local form
+      if (processCheckout.fulfilled.match(result)) {
+        setCustomerName("");
+        setCustomerEmail("");
       }
-    }
+    });
   }
 
-  function handleReset() {
-    setStatus("idle");
-  }
-
-  /* ── Render ────────────────────────────────────────────── */
+  /* ── Render ──────────────────────────────────────────────── */
   return (
     <>
       {/* Backdrop */}
@@ -132,7 +119,10 @@ export default function CartDrawer({ isOpen, onClose }) {
                 </div>
               ))}
             </div>
-            <button className={styles.resetBtn} onClick={() => { handleReset(); onClose(); }}>
+            <button
+              className={styles.resetBtn}
+              onClick={() => { dispatch(resetCheckout()); onClose(); }}
+            >
               Continue Shopping
             </button>
           </div>
@@ -164,19 +154,27 @@ export default function CartDrawer({ isOpen, onClose }) {
                         </p>
                       </div>
                       <div className={styles.itemControls}>
-                        <button className={styles.qtyBtn} onClick={() => updateQty(product.id, qty - 1)}>−</button>
+                        <button
+                          className={styles.qtyBtn}
+                          onClick={() => dispatch(updateQty({ productId: product.id, qty: qty - 1 }))}
+                        >−</button>
                         <span className={styles.qty}>{qty}</span>
-                        <button className={styles.qtyBtn} onClick={() => updateQty(product.id, qty + 1)}>+</button>
-                        <button className={styles.removeBtn} onClick={() => removeFromCart(product.id)}>🗑</button>
+                        <button
+                          className={styles.qtyBtn}
+                          onClick={() => dispatch(updateQty({ productId: product.id, qty: qty + 1 }))}
+                        >+</button>
+                        <button
+                          className={styles.removeBtn}
+                          onClick={() => dispatch(removeFromCart(product.id))}
+                        >🗑</button>
                       </div>
                     </li>
                   ))}
                 </ul>
 
-                {/* Customer details form */}
+                {/* Customer form */}
                 <div className={styles.customerForm}>
                   <p className={styles.formTitle}>Your Details</p>
-
                   <label className={styles.formLabel}>
                     <span>Name</span>
                     <input
@@ -188,7 +186,6 @@ export default function CartDrawer({ isOpen, onClose }) {
                       disabled={checkoutStatus === "processing"}
                     />
                   </label>
-
                   <label className={styles.formLabel}>
                     <span>Email</span>
                     <input
@@ -200,19 +197,18 @@ export default function CartDrawer({ isOpen, onClose }) {
                       disabled={checkoutStatus === "processing"}
                     />
                   </label>
-
-                  {formError && (
-                    <p className={styles.formError}>⚠ {formError}</p>
-                  )}
+                  {formError && <p className={styles.formError}>⚠ {formError}</p>}
                 </div>
 
                 {/* Footer */}
                 <div className={styles.footer}>
-                  {/* Backend error banner */}
-                  {checkoutStatus === "error" && checkoutError && (
+                  {checkoutStatus === "failed" && checkoutError && (
                     <div className={styles.errorBanner}>
                       ⚠ {checkoutError}
-                      <button className={styles.errorDismiss} onClick={handleReset}>✕</button>
+                      <button
+                        className={styles.errorDismiss}
+                        onClick={() => dispatch(resetCheckout())}
+                      >✕</button>
                     </div>
                   )}
 
@@ -226,14 +222,16 @@ export default function CartDrawer({ isOpen, onClose }) {
                     onClick={handleCheckout}
                     disabled={checkoutStatus === "processing"}
                   >
-                    {checkoutStatus === "processing" ? (
-                      <><span className={styles.btnSpinner} /> Processing…</>
-                    ) : (
-                      "Pay with Razorpay"
-                    )}
+                    {checkoutStatus === "processing"
+                      ? <><span className={styles.btnSpinner} /> Processing…</>
+                      : "Pay with Razorpay"
+                    }
                   </button>
 
-                  <button className={styles.clearBtn} onClick={clearCart}>
+                  <button
+                    className={styles.clearBtn}
+                    onClick={() => dispatch(clearCart())}
+                  >
                     Clear cart
                   </button>
                 </div>

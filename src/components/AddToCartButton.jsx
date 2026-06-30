@@ -1,32 +1,28 @@
 /**
  * components/AddToCartButton.jsx
  * --------------------------------
- * Small button rendered in each product row.
- * Reads cart state from Zustand to show "Added" feedback
- * without any local state.
+ * Dispatches addToCart Redux action.
+ * Reads cart state from Redux to show "in cart" feedback.
  */
 
-import useCartStore from "../store/useCartStore";
+import { useSelector, useDispatch } from "react-redux";
+import { addToCart, selectCartItems } from "../store/slices/cartSlice";
 import styles from "./AddToCartButton.module.css";
 
 export default function AddToCartButton({ product }) {
-  const items      = useCartStore(s => s.items);
-  const addToCart  = useCartStore(s => s.addToCart);
-
+  const dispatch = useDispatch();
+  const items    = useSelector(selectCartItems);
   const cartItem = items.find(i => i.product.id === product.id);
   const inCart   = !!cartItem;
 
   return (
     <button
       className={`${styles.btn} ${inCart ? styles.btnInCart : ""}`}
-      onClick={() => addToCart(product)}
+      onClick={() => dispatch(addToCart(product))}
       aria-label={inCart ? `${cartItem.qty} in cart` : "Add to cart"}
     >
       {inCart ? (
-        <>
-          <span className={styles.checkIcon}>✓</span>
-          {cartItem.qty} in cart
-        </>
+        <><span className={styles.checkIcon}>✓</span>{cartItem.qty} in cart</>
       ) : (
         <>+ Add</>
       )}

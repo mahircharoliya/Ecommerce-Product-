@@ -1,16 +1,15 @@
 /**
  * components/CartButton.jsx
  * --------------------------
- * Floating cart icon shown in the header.
- * Reads item count directly from Zustand — no props needed.
+ * Reads cart item count from Redux store (not Zustand).
  */
 
-import useCartStore from "../store/useCartStore";
+import { useSelector } from "react-redux";
+import { selectTotalItems } from "../store/slices/cartSlice";
 import styles from "./CartButton.module.css";
 
 export default function CartButton({ onClick }) {
-  const items      = useCartStore(s => s.items);
-  const totalItems = items.reduce((sum, i) => sum + i.qty, 0);
+  const totalItems = useSelector(selectTotalItems);
 
   return (
     <button className={styles.btn} onClick={onClick} aria-label="Open cart">

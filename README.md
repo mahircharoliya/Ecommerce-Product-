@@ -4,7 +4,7 @@ A full-stack product browsing app with real Razorpay payment integration.
 
 ## Tech Stack
 
-**Frontend:** React 18 · Vite · Zustand · CSS Modules  
+**Frontend:** React 18 · Vite · Redux Toolkit · Redux Thunk · CSS Modules  
 **Backend:** Node.js · Express · Razorpay SDK
 
 ---
@@ -15,11 +15,14 @@ A full-stack product browsing app with real Razorpay payment integration.
 product-explorer/
 ├── src/                          # React frontend
 │   ├── components/               # UI components
-│   ├── hooks/                    # useFetch, useDebounce
+│   ├── hooks/                    # useDebounce
 │   ├── services/
 │   │   └── razorpayService.js    # Talks to Express backend
 │   └── store/
-│       └── useCartStore.js       # Zustand cart store
+│       ├── store.js              # Redux store (thunk built in)
+│       └── slices/
+│           ├── productsSlice.js  # fetchProducts thunk, search/filter/sort/pagination
+│           └── cartSlice.js      # processCheckout thunk, cart items
 │
 ├── server/                       # Express backend
 │   ├── index.js                  # Entry point
@@ -36,6 +39,25 @@ product-explorer/
 ├── server/.env                   # Backend env (gitignored)
 └── server/.env.example           # Backend env template
 ```
+
+---
+
+## State Management
+
+All app state lives in Redux — two slices, both using **Redux Thunk** for async work:
+
+| Slice | Thunk | Handles |
+|---|---|---|
+| `productsSlice` | `fetchProducts()` | Fetching 100 products, search, filter, sort, pagination |
+| `cartSlice` | `processCheckout()` | Cart items + the full Razorpay payment flow |
+
+```js
+// Dispatching a thunk — same pattern for both slices
+dispatch(fetchProducts());
+dispatch(processCheckout({ items, totalAmount, customerName, customerEmail }));
+```
+
+Redux Toolkit's `configureStore` wires in `redux-thunk` middleware automatically — no manual setup needed. Derived data (filtered/sorted/paginated lists, categories, totals) is computed via memoized `createSelector` selectors, so components never repeat that logic.
 
 ---
 
