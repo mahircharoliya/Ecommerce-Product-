@@ -13,7 +13,7 @@
  * Nothing sensitive (secret key, signature logic) is on the frontend.
  */
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL;
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || window.location.origin;
 
 /* ─── Load Razorpay checkout.js SDK ────────────────────────────────────── */
 /**
@@ -23,11 +23,16 @@ export function loadRazorpaySDK() {
   return new Promise((resolve, reject) => {
     if (window.Razorpay) return resolve(true);
 
-    const script    = document.createElement("script");
-    script.src      = "https://checkout.razorpay.com/v1/checkout.js";
-    script.async    = true;
-    script.onload   = () => resolve(true);
-    script.onerror  = () => reject(new Error("Failed to load Razorpay SDK. Check your internet connection."));
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () =>
+      reject(
+        new Error(
+          "Failed to load Razorpay SDK. Check your internet connection.",
+        ),
+      );
     document.body.appendChild(script);
   });
 }
@@ -47,9 +52,9 @@ async function fetchKeyId() {
  */
 async function createOrder({ amount, notes = {} }) {
   const res = await fetch(`${SERVER_URL}/api/payment/create-order`, {
-    method : "POST",
+    method: "POST",
     headers: { "Content-Type": "application/json" },
-    body   : JSON.stringify({ amount, notes }),
+    body: JSON.stringify({ amount, notes }),
   });
 
   const data = await res.json();
@@ -63,23 +68,29 @@ async function createOrder({ amount, notes = {} }) {
  * Returns a Promise that resolves with Razorpay's payment response
  * or rejects if the user closes the modal or payment fails.
  */
-function openRazorpayModal({ keyId, order, cartItems, customerName, customerEmail }) {
+function openRazorpayModal({
+  keyId,
+  order,
+  cartItems,
+  customerName,
+  customerEmail,
+}) {
   return new Promise((resolve, reject) => {
     const options = {
-      key        : keyId,
-      amount     : order.amount,       // in paise (set by backend)
-      currency   : order.currency,
-      name       : "Product Explorer",
+      key: keyId,
+      amount: order.amount, // in paise (set by backend)
+      currency: order.currency,
+      name: "Product Explorer",
       description: `${cartItems.length} item${cartItems.length > 1 ? "s" : ""}`,
-      order_id   : order.orderId,      // from backend
+      order_id: order.orderId, // from backend
 
       prefill: {
-        name : customerName  || "",
+        name: customerName || "",
         email: customerEmail || "",
       },
 
       notes: {
-        items: cartItems.map(i => `${i.product.title} × ${i.qty}`).join(", "),
+        items: cartItems.map((i) => `${i.product.title} × ${i.qty}`).join(", "),
       },
 
       theme: { color: "#3b82f6" },
@@ -99,7 +110,7 @@ function openRazorpayModal({ keyId, order, cartItems, customerName, customerEmai
 
     const rzp = new window.Razorpay(options);
 
-    rzp.on("payment.failed", err => {
+    rzp.on("payment.failed", (err) => {
       reject(new Error(err.error?.description ?? "Payment failed"));
     });
 
@@ -113,11 +124,19 @@ function openRazorpayModal({ keyId, order, cartItems, customerName, customerEmai
  * Backend re-creates the HMAC-SHA256 signature and compares.
  * Returns { success, paymentId, orderId, message }
  */
-async function verifyPayment({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) {
+async function verifyPayment({
+  razorpay_order_id,
+  razorpay_payment_id,
+  razorpay_signature,
+}) {
   const res = await fetch(`${SERVER_URL}/api/payment/verify`, {
-    method : "POST",
+    method: "POST",
     headers: { "Content-Type": "application/json" },
-    body   : JSON.stringify({ razorpay_order_id, razorpay_payment_id, razorpay_signature }),
+    body: JSON.stringify({
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+    }),
   });
 
   const data = await res.json();
@@ -138,18 +157,20 @@ async function verifyPayment({ razorpay_order_id, razorpay_payment_id, razorpay_
  * @param {{ amount, cartItems, customerName, customerEmail }} options
  * @returns {Promise<{ success, paymentId, orderId, amount, message }>}
  */
-export async function initiatePayment({ amount, cartItems, customerName = "", customerEmail = "" }) {
+export async function initiatePayment({
+  amount,
+  cartItems,
+  customerName = "",
+  customerEmail = "",
+}) {
   // Step 1 & SDK load — run in parallel for speed
-  const [, keyId] = await Promise.all([
-    loadRazorpaySDK(),
-    fetchKeyId(),
-  ]);
+  const [, keyId] = await Promise.all([loadRazorpaySDK(), fetchKeyId()]);
 
   // Step 2 — create order on backend
   const order = await createOrder({
     amount,
     notes: {
-      items: cartItems.map(i => `${i.product.title} × ${i.qty}`).join(", "),
+      items: cartItems.map((i) => `${i.product.title} × ${i.qty}`).join(", "),
     },
   });
 
@@ -164,15 +185,15 @@ export async function initiatePayment({ amount, cartItems, customerName = "", cu
 
   // Step 4 — verify signature on backend
   const verified = await verifyPayment({
-    razorpay_order_id  : paymentResponse.razorpay_order_id,
+    razorpay_order_id: paymentResponse.razorpay_order_id,
     razorpay_payment_id: paymentResponse.razorpay_payment_id,
-    razorpay_signature : paymentResponse.razorpay_signature,
+    razorpay_signature: paymentResponse.razorpay_signature,
   });
 
   return {
     ...verified,
     amount,
-    orderId  : order.orderId,
+    orderId: order.orderId,
     paymentId: paymentResponse.razorpay_payment_id,
   };
 }

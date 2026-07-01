@@ -20,15 +20,43 @@
 
 require("dotenv").config({ path: __dirname + "/.env" });
 
-const express       = require("express");
-const cors          = require("cors");
-const errorHandler  = require("./middleware/errorHandler");
-const logger        = require("./middleware/logger");
+const express = require("express");
+const cors = require("cors");
+const errorHandler = require("./middleware/errorHandler");
+const logger = require("./middleware/logger");
 const paymentRoutes = require("./routes/payment");
-const webhookRoutes = require("./routes/webhook");  // NEW
+const webhookRoutes = require("./routes/webhook"); // NEW
 
-const app  = express();
+const app = express();
 const PORT = process.env.PORT;
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:4173",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:4173",
+  process.env.FRONTEND_URL,
+  ...(process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean)
+    : []),
+].filter(Boolean);
+
+const corsOptions = {
+  origin(origin, callback) {
+    const isAllowedOrigin =
+      !origin ||
+      allowedOrigins.includes(origin) ||
+      /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
+      /\.(vercel\.app|netlify\.app|onrender\.com)$/i.test(origin);
+
+    callback(null, isAllowedOrigin);
+  },
+  methods: ["GET", "POST", "OPTIONS"],
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
 
 /* ── 1. WEBHOOK ROUTE — must come before express.json() ──────────────── */
 // The rawBody middleware inside webhookRoutes handles its own body parsing.
@@ -36,15 +64,8 @@ const PORT = process.env.PORT;
 app.use("/api/webhook", webhookRoutes);
 
 /* ── 2. Global Middleware ─────────────────────────────────────────────── */
-app.use(cors({
-  origin: [
-    "http://localhost:5173",  // Vite dev
-    "http://localhost:4173",  // Vite preview
-    process.env.FRONTEND_URL, // Production
-  ].filter(Boolean),
-  methods: ["GET", "POST", "OPTIONS"],
-  credentials: true,
-}));
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -53,11 +74,13 @@ app.use(logger);
 /* ── 3. Routes ────────────────────────────────────────────────────────── */
 app.get("/api/health", (req, res) => {
   res.json({
-    status   : "ok",
+    status: "ok",
     timestamp: new Date().toISOString(),
-    env      : process.env.NODE_ENV,
-    razorpay : !!process.env.RAZORPAY_KEY_ID ? "configured" : "missing",
-    webhook  : !!process.env.RAZORPAY_WEBHOOK_SECRET ? "configured" : "⚠️  missing",
+    env: process.env.NODE_ENV,
+    razorpay: !!process.env.RAZORPAY_KEY_ID ? "configured" : "missing",
+    webhook: !!process.env.RAZORPAY_WEBHOOK_SECRET
+      ? "configured"
+      : "⚠️  missing",
   });
 });
 
@@ -76,7 +99,11 @@ app.listen(PORT, () => {
   console.log("\n────────────────────────────────────────");
   console.log(`🚀  Server        : http://localhost:${PORT}`);
   console.log(`🌍  Environment   : ${process.env.NODE_ENV}`);
-  console.log(`💳  Razorpay      : ${process.env.RAZORPAY_KEY_ID?.slice(0, 14)}...`);
-  console.log(`🪝  Webhook secret: ${process.env.RAZORPAY_WEBHOOK_SECRET ? "✅  set" : "❌  NOT SET"}`);
+  console.log(
+    `💳  Razorpay      : ${process.env.RAZORPAY_KEY_ID?.slice(0, 14)}...`,
+  );
+  console.log(
+    `🪝  Webhook secret: ${process.env.RAZORPAY_WEBHOOK_SECRET ? "✅  set" : "❌  NOT SET"}`,
+  );
   console.log("────────────────────────────────────────\n");
 });
