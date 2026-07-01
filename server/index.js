@@ -28,7 +28,7 @@ const paymentRoutes = require("./routes/payment");
 const webhookRoutes = require("./routes/webhook");  // NEW
 
 const app  = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT;
 
 /* ── 1. WEBHOOK ROUTE — must come before express.json() ──────────────── */
 // The rawBody middleware inside webhookRoutes handles its own body parsing.

@@ -13,7 +13,7 @@
  * Nothing sensitive (secret key, signature logic) is on the frontend.
  */
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:5000";
+const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
 /* ─── Load Razorpay checkout.js SDK ────────────────────────────────────── */
 /**
