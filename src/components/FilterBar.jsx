@@ -29,7 +29,7 @@ export default function FilterBar({ categories, filters, onFilterChange }) {
 
       {/* Min price */}
       <label className={styles.label}>
-        <span className={styles.labelText}>Min price ($)</span>
+        <span className={styles.labelText}>Min price (₹)</span>
         <input
           type="number"
           min="0"
@@ -42,7 +42,7 @@ export default function FilterBar({ categories, filters, onFilterChange }) {
 
       {/* Max price */}
       <label className={styles.label}>
-        <span className={styles.labelText}>Max price ($)</span>
+        <span className={styles.labelText}>Max price (₹)</span>
         <input
           type="number"
           min="0"

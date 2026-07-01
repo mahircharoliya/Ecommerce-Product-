@@ -75,7 +75,7 @@ export default function SortableTable({ products, sortConfig, onSort }) {
                 <span className={styles.categoryBadge}>{p.category}</span>
               </td>
               <td className={`${styles.td} ${styles.tdNum}`}>
-                ${p.price.toFixed(2)}
+                ₹{p.price.toFixed(2)}
               </td>
               <td className={`${styles.td} ${styles.tdNum}`}>
                 <RatingPill rating={p.rating} />
